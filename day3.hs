@@ -1,36 +1,61 @@
+{-# LANGUAGE BangPatterns #-}
+
 import qualified Data.HashTable.IO as H
 import Data.Maybe (fromMaybe)
 
 main :: IO ()
 main = do
 
+    let input = 361527
+
     print $ partOne input
 
     print =<< partTwo input
-    
-input :: Int
-input = 361527
 
 partOne :: Int -> Int
-partOne n = (\(px, py) -> abs px + abs py)
-          $ path n
+partOne input =
+
+    let lengths = concatMap (\x -> [x,x]) [1..]
+
+        directionsX = cycle [1, 0,-1, 0]
+
+        directionsY = cycle [0, 1, 0,-1]
+
+    in bigSteps 1 0 0 lengths directionsX directionsY
+
+    where
+    bigSteps !bn !box !boy (len:lens) (dx:dxs) (dy:dys) =
+        
+        let box' = box + len * dx
+            boy' = boy + len * dy
+            dist = abs (len * dx) + abs (len * dy)
+            bn' = bn + dist
+        in
+        if bn' >= input
+            then smallSteps bn box boy
+            else bigSteps bn' box' boy' lens dxs dys
+
+        where
+        smallSteps sn !sox !soy
+            | sn == input = abs sox + abs soy
+            | otherwise   = smallSteps (sn+1) (sox + dx) (soy + dy)
 
 type Grid = H.BasicHashTable (Int, Int) Int
 
-directions = cycle [ ( 1, 0)
-                   , ( 0, 1)
-                   , (-1, 0)
-                   , ( 0,-1) ]
 
-lengths = concatMap (\x -> [x, x]) [1..]
 
-steps = concat . zipWith replicate lengths $ directions
+partTwo :: Int -> IO Int
+partTwo input = do
 
-path n = foldr (\(px,py) (dx, dy) -> (px + dx, py + dy))
-               (0,0)
-               (take (n-1) steps)
+    let directions = cycle [ ( 1, 0)
+                           , ( 0, 1)
+                           , (-1, 0)
+                           , ( 0,-1) ]
 
-partTwo n = do
+        lengths = concatMap (\x -> [x, x]) [1..]
+
+        steps = concat . zipWith replicate lengths $ directions
+
     grid <- H.new :: IO Grid
     H.insert grid (0, 0) 1
     go grid (0,0) steps
@@ -42,7 +67,7 @@ partTwo n = do
 
         s <- sumNeighbours grid (px',py')
 
-        if s > n
+        if s > input
             then return s
             else do
                 H.insert grid (px',py') s
